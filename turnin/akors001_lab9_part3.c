@@ -81,7 +81,7 @@ void PWM_off() {
 }
 
 
-enum SM_States {START, sm_1, sm_2} state;
+enum SM_States {START, sm_2, sm_3} state;
 #define B3 249.94
 #define C4 261.63
 #define D4 293.66
@@ -107,29 +107,24 @@ void TickFct() {
 	switch(state) {
 		case START:
 			if ((~PINA & 0x07) == 0x01) {
-				state = sm_1;
-			} else if ((~PINA & 0x07) == 0x02) {
 				state = sm_2;
-
 			} else {
 				state = START;
 			}
 			break;
-		case sm_1:
-			if ((~PINA & 0x07) == 0x01) {
-				state = sm_1;
-			} else {
-				state = sm_2;
-				set_PWM(notes[0]);
-			}	
-			break;
 		case sm_2:
 			if (noteCount == 12) {
-				state = START;			
+				state = sm_3;			
 			} else {
 				state = sm_2;
 			}
 			break;
+		case sm_3:
+			if ((~PINA & 0x01) == 0x01) {
+				state = sm_3;
+			} else {
+				state = START;
+			}
 		default:
 			break;
 
@@ -140,8 +135,6 @@ void TickFct() {
 			set_PWM(0);
 			noteCount = 0;
 			lenCount = 0;
-			break;
-		case sm_1:
 			break;
 		case sm_2:
 			if (lenCount < lengths[noteCount]) {
@@ -155,6 +148,7 @@ void TickFct() {
 			}
 			set_PWM(notes[noteCount]);
 			break;
+		case sm_3:
 		default:
 			set_PWM(0);
 			break;

@@ -81,53 +81,50 @@ void PWM_off() {
 }
 
 
-enum SM_States {START, sm_1, sm_2, sm_3} state;
-bool b1 = false;
+enum SM_States {START, sm_2, sm_3} state;
+#define B3 249.94
+#define C4 261.63
+#define D4 293.66
+#define E4 329.63
+#define F4 349.23
+#define G4 392.00
+#define A4 440.00
+#define B4 493.88
+#define C5 523.25
 
-double notes[] = {261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25};
-unsigned char count = 0;
+
+unsigned char period = 166;
+
+double notes[] = {F4, 0, F4, 0, G4, F4, C4, 0, G4, B3, 0, G4, 0};
+double lengths[] = {4, 4, 3, 2, 1, 1, 5, 1, 2, 5, 2, 2, 1};
+//sums to 4+4+3+2+1+1+5+1+2+5+2+2+1= 33 * 166 ms = 5478 ms > 5 seconds of music
+
+unsigned char noteCount = 0;
+unsigned char lenCount = 0;
+
 
 void TickFct() {
 	switch(state) {
 		case START:
 			if ((~PINA & 0x07) == 0x01) {
-				state = sm_1;
-				b1 = !b1;
-			} else if ((~PINA & 0x07) == 0x02) {
 				state = sm_2;
-				if(count < 7) {
-					count++;
-				}
-			} else if ((~PINA & 0x07) == 0x04) {
-				state = sm_3;
-				if (count > 0) {
-					count--;
-				}
 			} else {
 				state = START;
 			}
 			break;
-		case sm_1:
-			if ((~PINA & 0x07) == 0x01) {
-				state = sm_1;
-			} else {
-				state = START;
-			}	
-			break;
 		case sm_2:
-			if ((~PINA & 0x07) == 0x02) {
-				state = sm_2;
+			if (noteCount == 12) {
+				state = sm_3;			
 			} else {
-				state = START;
+				state = sm_2;
 			}
 			break;
 		case sm_3:
-			if ((~PINA & 0x07) == 0x04) {
+			if ((~PINA & 0x01) == 0x01) {
 				state = sm_3;
 			} else {
 				state = START;
 			}
-			break;
 		default:
 			break;
 
@@ -135,15 +132,23 @@ void TickFct() {
 
 	switch(state) {
 		case START:
-		case sm_1:
+			set_PWM(0);
+			noteCount = 0;
+			lenCount = 0;
+			break;
 		case sm_2:
-		case sm_3:
-			if(b1) {
-				set_PWM(notes[count]);
+			if (lenCount < lengths[noteCount]) {
+				lenCount ++;
 			} else {
-				set_PWM(0);
+				if (noteCount < 12) {
+					noteCount++;
+				}
+
+				lenCount = 0;
 			}
-			break;	
+			set_PWM(notes[noteCount]);
+			break;
+		case sm_3:
 		default:
 			set_PWM(0);
 			break;
@@ -159,10 +164,10 @@ int main(void) {
     DDRD = 0xFF; PORTD = 0x00;
     	
 
-    TimerSet(50);
+    TimerSet(period);
     TimerOn();
     PWM_on();
-	PORTB = 0x01;
+    set_PWM(0);
     /* Insert your solution below */
     while (1) {
         while (!TimerFlag);
